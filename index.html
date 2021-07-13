@@ -9,12 +9,17 @@
 </head>
 
 <body>
-    <div id="drop_zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+    <div id="drop-zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
         <p>Drag one or more files to this Drop Zone ...</p>
     </div>
     <div id="file-list"></div>
+    <div id="progress">0%</div>
+    <progress id="progress-bar" value="0" max="100"></progress>
+    <button onclick="doUpload()">Upload</button>
 </body>
 <script>
+    const data = new FormData()
+
     function futch(url, opts = {}, onProgress) {
         return new Promise((res, rej) => {
             var xhr = new XMLHttpRequest()
@@ -31,18 +36,7 @@
         })
     }
 
-    async function dropHandler(ev) {
-        console.log('File(s) dropped')
-        ev.preventDefault()
-
-        const data = new FormData()
-        for (var i = 0; i < ev.dataTransfer.files.length; i++) {
-            console.log('!!! file[' + i + '].name = ' + ev.dataTransfer.files[i].name)
-            document.getElementById("file-list").innerHTML += ev.dataTransfer.files[i].name + "/" + ev.dataTransfer.files[i].size + "<br />"
-
-            data.append('file[]', ev.dataTransfer.files[i])
-        }
-
+    async function doUpload() {
         let files = Array.from(await data.entries())
         console.log(files.length)
 
@@ -51,9 +45,26 @@
             const response = await futch('http://localhost:1323/upload', {
                 method: "POST",
                 body: data,
+            }, (p) => {
+                let pct = ((p.loaded / p.total) * 100).toFixed(2)
+                console.log(pct)
+                document.getElementById("progress").innerHTML = pct +"%"
+                document.getElementById("progress-bar").value = pct
             })
 
             console.log("Result: ", await response)
+        }
+    }
+
+    async function dropHandler(ev) {
+        console.log('File(s) dropped')
+        ev.preventDefault()
+
+        for (var i = 0; i < ev.dataTransfer.files.length; i++) {
+            console.log('!!! file[' + i + '].name = ' + ev.dataTransfer.files[i].name)
+            document.getElementById("file-list").innerHTML += ev.dataTransfer.files[i].name + "/" + ev.dataTransfer.files[i].size + "<br />"
+
+            data.append('file[]', ev.dataTransfer.files[i])
         }
     }
 
@@ -64,7 +75,7 @@
     }
 </script>
 <style>
-    #drop_zone {
+    #drop-zone {
         border: 5px solid blue;
         width: 200px;
         height: 100px;
