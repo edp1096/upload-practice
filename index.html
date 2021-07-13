@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Page Title</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+</head>
+
+<body>
+    <div id="drop_zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+        <p>Drag one or more files to this Drop Zone ...</p>
+    </div>
+    <div id="file-list"></div>
+</body>
+<script>
+    function futch(url, opts = {}, onProgress) {
+        return new Promise((res, rej) => {
+            var xhr = new XMLHttpRequest()
+            xhr.open(opts.method || 'get', url)
+            for (var k in opts.headers || {})
+                xhr.setRequestHeader(k, opts.headers[k])
+            xhr.onload = e => res(e.target.responseText)
+            xhr.onerror = rej
+            if (xhr.upload && onProgress) {
+                // event.loaded / event.total * 100 ; //event.lengthComputable
+                xhr.upload.onprogress = onProgress
+            }
+            xhr.send(opts.body)
+        })
+    }
+
+    async function dropHandler(ev) {
+        console.log('File(s) dropped')
+        ev.preventDefault()
+
+        const data = new FormData()
+        for (var i = 0; i < ev.dataTransfer.files.length; i++) {
+            console.log('!!! file[' + i + '].name = ' + ev.dataTransfer.files[i].name)
+            document.getElementById("file-list").innerHTML += ev.dataTransfer.files[i].name + "/" + ev.dataTransfer.files[i].size + "<br />"
+
+            data.append('file[]', ev.dataTransfer.files[i])
+        }
+
+        let files = Array.from(await data.entries())
+        console.log(files.length)
+
+        if (files.length > 0) {
+            // const response = await futch('upload.php', {
+            const response = await futch('http://localhost:1323/upload', {
+                method: "POST",
+                body: data,
+            })
+
+            console.log("Result: ", await response)
+        }
+    }
+
+    function dragOverHandler(ev) {
+        console.log('File(s) in drop zone');
+
+        ev.preventDefault();
+    }
+</script>
+<style>
+    #drop_zone {
+        border: 5px solid blue;
+        width: 200px;
+        height: 100px;
+    }
+</style>
+
+</html>
