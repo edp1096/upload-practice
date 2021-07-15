@@ -171,7 +171,8 @@
     }
 
     async function sendFile(name, type, content, ord) {
-        const uri = "upload-stream.php"
+        // const uri = "upload-stream.php"
+        const uri = "http://localhost:1323/upload-tmp"
         // let uri = "http://localhost:10081/upload-stream/upload.php"
         const data = {
             name: name,
