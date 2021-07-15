@@ -1,1 +1,5 @@
 /bin/*
+/data_tmp/*
+!/data_tmp/.gitkeep
+/data/*
+!/data/.gitkeep
