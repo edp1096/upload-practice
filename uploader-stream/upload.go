@@ -2,7 +2,6 @@ package main // import "upload-stream"
 
 import (
 	b64 "encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -16,25 +15,42 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/oklog/ulid/v2"
+	"gopkg.in/guregu/null.v4"
 )
 
 type (
 	FileData struct {
-		Name    string `json:"name"`
-		Type    string `json:"type"`
-		Content string `json:"content"`
+		Name    null.String `json:"name"`
+		TmpName null.String `json:"tmp_name,omitempty"`
+		DbName  null.String `json:"dbname,omitempty"`
+		Type    null.String `json:"type"`
+		Content null.String `json:"content"`
+		Success null.String `json:"success,omitempty"`
 	}
 )
 
-func uploadTMP(c echo.Context) (err error) {
+var (
+	pathTMP  = "data_tmp"
+	pathData = "data"
+)
+
+// UniqueID - Get Unique ID
+func UniqueID() string {
+	t := time.Unix(1000000, 0)
+	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
+
+	return fmt.Sprint(ulid.MustNew(ulid.Timestamp(t), entropy))
+}
+
+// UploadTMP - Upload file as temporary
+func UploadTMP(c echo.Context) (err error) {
 	var file FileData
 
 	dataROOT, err := os.Getwd()
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"msg": err.Error()})
 	}
-
-	dataPathTMP := dataROOT + "/../data_tmp/"
+	dataPathTMP := dataROOT + "/../" + pathTMP + "/"
 
 	if _, err := os.Stat(dataPathTMP); os.IsNotExist(err) {
 		err := os.Mkdir(dataPathTMP, 0644)
@@ -43,22 +59,16 @@ func uploadTMP(c echo.Context) (err error) {
 		}
 	}
 
-	if b, err := ioutil.ReadAll(c.Request().Body); err == nil {
-		if err := json.Unmarshal(b, &file); err != nil {
-			fdata, _ := json.Marshal(&file)
-			return c.JSON(http.StatusBadRequest, map[string]string{"msg": err.Error(), "file": string(fdata)})
-		}
+	if err = c.Bind(&file); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"msg": err.Error()})
 	}
 
-	t := time.Unix(1000000, 0)
-	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
+	fName := strings.TrimSuffix(file.Name.String, filepath.Ext(file.Name.String))
+	fExt := filepath.Ext(file.Name.String)
 
-	fileNAME := strings.TrimSuffix(file.Name, filepath.Ext(file.Name))
-	fileEXT := filepath.Ext(file.Name)
+	tmpName := fName + "_" + UniqueID() + "." + fExt
 
-	tmpName := fileNAME + fmt.Sprint(ulid.MustNew(ulid.Timestamp(t), entropy)) + "." + fileEXT
-
-	content, _ := b64.StdEncoding.DecodeString(file.Content)
+	content, _ := b64.StdEncoding.DecodeString(file.Content.String)
 	err = ioutil.WriteFile(dataPathTMP+tmpName, content, 0644)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"msg": err.Error()})
@@ -66,9 +76,55 @@ func uploadTMP(c echo.Context) (err error) {
 
 	result := map[string]string{
 		"result":   "done",
-		"name":     file.Name,
-		"type":     file.Type,
+		"name":     file.Name.String,
+		"type":     file.Type.String,
 		"tmp_name": tmpName,
+	}
+
+	return c.JSON(http.StatusOK, result)
+}
+
+// UploadFINISH - Move file from temporary to data dir
+func UploadFINISH(c echo.Context) (err error) {
+	var files []FileData
+
+	dataROOT, err := os.Getwd()
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"msg": err.Error()})
+	}
+	dataPathTMP := dataROOT + "/../" + pathTMP + "/"
+	finPath := dataROOT + "/../" + pathData + "/"
+
+	if _, err := os.Stat(finPath); os.IsNotExist(err) {
+		err := os.Mkdir(finPath, 0644)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"msg": err.Error()})
+		}
+	}
+
+	if err = c.Bind(&files); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"msg": err.Error()})
+	}
+
+	for i, f := range files {
+		fName := strings.TrimSuffix(f.Name.String, filepath.Ext(f.Name.String))
+		fExt := filepath.Ext(f.Name.String)
+
+		dbName := fName + "_" + UniqueID() + "." + fExt
+
+		err := os.Rename(dataPathTMP+f.TmpName.String, finPath+dbName)
+
+		files[i].Success = null.NewString("success", true)
+		files[i].DbName = null.NewString(dbName, true)
+		if err != nil {
+			files[i].Success = null.NewString(err.Error(), true)
+		}
+	}
+
+	// filesJSON, _ := json.Marshal(files)
+	result := map[string]interface{}{
+		"result": "done",
+		// "files":  string(filesJSON),
 	}
 
 	return c.JSON(http.StatusOK, result)
@@ -86,7 +142,8 @@ func main() {
 	}))
 
 	e.Static("/", "public")
-	e.POST("/upload-tmp", uploadTMP)
+	e.POST("/upload-tmp", UploadTMP)
+	e.POST("/upload-finish", UploadFINISH)
 
 	// e.Logger.Fatal(e.Start(":1323"))
 	e.Logger.Fatal(e.Start("localhost:1323"))

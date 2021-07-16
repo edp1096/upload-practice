@@ -11,45 +11,77 @@
 </head>
 
 <body>
-    <div id="drop-zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+    <h1>업로드 연습 - 스트림</h1>
+    <input type="file" name="input-file" multiple onchange="inputHandler(this)" />
+    <div id="drop-area" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
         <p>Drag one or more files to this Drop Zone</p>
     </div>
-    <button onclick="completeUpload()">Complete upload</button>
+    <button onclick="uploadFINISH()">Complete upload</button>
     <pre id="msg"></pre>
 
 </body>
 <script>
     const formData = new FormData()
     const uploadTmpPath = "data_tmp"
+
+    // php
+    // const uriTMP = "upload-stream.php"
+    // const uriFINISH = "move.php"
+
+    // go
+    const uriTMP = "http://localhost:1323/upload-tmp"
+    const uriFINISH = "http://localhost:1323/upload-finish"
+
+    const headerJSON = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
     let orderCount = 0
 
-    function deleteEntry(ord) {
-        formData.delete("file" + ord)
-
-        const cavity = document.getElementById("file-cavity" + ord)
-        cavity.remove()
+    // https://stackoverflow.com/questions/3582671/how-to-open-a-local-disk-file-with-javascript
+    function readFile(file) {
+        return new Promise((resolve, reject) => {
+            let fr = new FileReader()
+            fr.onload = x => resolve(fr.result)
+            // fr.readAsText(file)
+            fr.readAsBinaryString(file)
+        })
     }
-    async function completeUpload() {
-        var object = {};
-        formData.forEach(function (value, key) {
-            object[key] = value
-        })
-        var json = JSON.stringify(object)
 
-        const response = await fetch("move.php", {
-            method: "POST",
-            headers: {},
-            body: json
-        })
+    async function readFormData(files) {
+        console.log("Begin Count: ", orderCount)
 
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-            const resultJSON = await response.json()
-            console.log(resultJSON)
-        } else {
-            const resultTEXT = await response.text()
-            console.log(resultTEXT)
+        let ord = 0
+
+        // https://stackoverflow.com/questions/23223718/failed-to-execute-btoa-on-window-the-string-to-be-encoded-contains-characte
+        for (let i = 0; i < files.length; i++) {
+            const fcontent = btoa(await readFile(files[i]))
+            const fname = files[i].name
+            const ftype = files[i].type
+
+            uploadTMP(fname, ftype, fcontent, (orderCount + i).toString())
+
+            ord = orderCount + i
         }
+
+        orderCount = ord + 1
+    }
+
+    function futch(url, opts = {}, onProgress) {
+        return new Promise((res, rej) => {
+            var xhr = new XMLHttpRequest()
+            xhr.open(opts.method || 'get', url)
+            for (var k in opts.headers || {}) {
+                xhr.setRequestHeader(k, opts.headers[k])
+            }
+            xhr.onload = e => res(e.target.responseText)
+            xhr.onerror = rej
+            if (xhr.upload && onProgress) {
+                // event.loaded / event.total * 100 ; //event.lengthComputable
+                xhr.upload.onprogress = onProgress
+            }
+            xhr.send(opts.body)
+        })
     }
 
     function showRemoteObject(obj, ord) {
@@ -94,25 +126,7 @@
         return false
     }
 
-    function futch(url, opts = {}, onProgress) {
-        return new Promise((res, rej) => {
-            var xhr = new XMLHttpRequest()
-            xhr.open(opts.method || 'get', url)
-            for (var k in opts.headers || {}) {
-                xhr.setRequestHeader(k, opts.headers[k])
-            }
-            xhr.onload = e => res(e.target.responseText)
-            xhr.onerror = rej
-            if (xhr.upload && onProgress) {
-                // event.loaded / event.total * 100 ; //event.lengthComputable
-                xhr.upload.onprogress = onProgress
-            }
-            xhr.send(opts.body)
-        })
-    }
-
-
-    async function dropHandler(ev) {
+    function dropHandler(ev) {
         // console.log('File(s) dropped')
         ev.preventDefault()
 
@@ -141,47 +155,39 @@
         ev.preventDefault()
     }
 
-    async function readFormData(files) {
-        console.log("Begin Count: ", orderCount)
-
-        let ord = 0
-
-        // https://stackoverflow.com/questions/23223718/failed-to-execute-btoa-on-window-the-string-to-be-encoded-contains-characte
-        for (let i = 0; i < files.length; i++) {
-            const fcontent = btoa(await readFile(files[i]))
-            const fname = files[i].name
-            const ftype = files[i].type
-
-            sendFile(fname, ftype, fcontent, (orderCount + i).toString())
-
-            ord = orderCount + i
+    async function inputHandler(input) {
+        if (input.files.length == 0) {
+            return false // Empty
         }
 
-        orderCount = ord + 1
+        for (var i = 0; i < input.files.length; i++) {
+            const cavity = document.createElement("div" + (orderCount + i))
+            cavity.setAttribute("id", "file-cavity" + (orderCount + i))
+
+            const progress = document.createElement("progress")
+            progress.setAttribute("id", "progress-bar" + (orderCount + i))
+            progress.setAttribute("value", "0")
+            progress.setAttribute("max", "100")
+            cavity.appendChild(progress)
+
+            msg.appendChild(cavity)
+        }
+
+        await readFormData(input.files)
+
+        document.getElementsByName("input-file")[0].value = ""
     }
 
-    // https://stackoverflow.com/questions/3582671/how-to-open-a-local-disk-file-with-javascript
-    function readFile(file) {
-        return new Promise((resolve, reject) => {
-            let fr = new FileReader()
-            fr.onload = x => resolve(fr.result)
-            // fr.readAsText(file)
-            fr.readAsBinaryString(file)
-        })
-    }
-
-    async function sendFile(name, type, content, ord) {
-        // const uri = "upload-stream.php"
-        const uri = "http://localhost:1323/upload-tmp"
-        // let uri = "http://localhost:10081/upload-stream/upload.php"
+    async function uploadTMP(name, type, content, ord) {
         const data = {
             name: name,
             type: type,
             content: content,
         }
 
-        const response = await futch(uri, {
+        const response = await futch(uriTMP, {
             method: "POST",
+            headers: headerJSON,
             body: JSON.stringify(data),
         }, (e) => {
             let pct = ((e.loaded / e.total) * 100).toFixed(2)
@@ -190,20 +196,81 @@
 
             // document.getElementById("progress").innerHTML = pct + "%"
             document.getElementById("progress-bar" + ord).value = pct
+            document.getElementById("progress-bar" + ord).setAttribute("data-label", pct)
         })
 
         const obj = JSON.parse(response)
-        console.log(ord)
+
         formData.append("file" + ord, response)
         showRemoteObject(obj, ord)
     }
 
+    function deleteEntry(ord) {
+        formData.delete("file" + ord)
+
+        const cavity = document.getElementById("file-cavity" + ord)
+        cavity.remove()
+    }
+
+    async function uploadFINISH() {
+        let data = new Array();
+        formData.forEach(function (value, key) {
+            data.push(JSON.parse(value))
+        })
+
+        const response = await fetch(uriFINISH, {
+            method: "POST",
+            headers: headerJSON,
+            body: JSON.stringify(data)
+        })
+
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            const resultJSON = await response.json()
+            console.log(resultJSON)
+        } else {
+            const resultTEXT = await response.text()
+            console.log(resultTEXT)
+        }
+
+        swal.fire("Done", "", "success").then(() => {
+            while (msg.firstChild) {
+                msg.removeChild(msg.lastChild)
+            }
+        })
+    }
+
 </script>
 <style>
-    #drop-zone {
+    #drop-area {
         border: 5px solid blue;
         width: 200px;
         height: 100px;
+    }
+
+    /*
+    Progress bar
+    https: //stackoverflow.com/questions/41429906/how-to-display-data-label-inside-html5-progress-bar-cross-browser
+    https: //stackoverflow.com/questions/65612948/change-the-color-of-webkit-progress-value-from-javascript
+    */
+
+    progress::-webkit-progress-value {
+        background-color: cadetblue;
+    }
+
+    progress {
+        text-align: center;
+        border: none;
+        color: white;
+        position: relative;
+    }
+
+    progress:before {
+        content: attr(data-label);
+        font-size: 0.8em;
+        position: absolute;
+        left: 0;
+        right: 0;
     }
 </style>
 
