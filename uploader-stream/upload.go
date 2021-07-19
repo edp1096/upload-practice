@@ -24,7 +24,7 @@ type (
 		TmpName null.String `json:"tmp_name,omitempty"`
 		DbName  null.String `json:"dbname,omitempty"`
 		Type    null.String `json:"type"`
-		Content null.String `json:"content"`
+		Content null.String `json:"content,omitempty"`
 		Success null.String `json:"success,omitempty"`
 	}
 )
@@ -36,7 +36,7 @@ var (
 
 // UniqueID - Get Unique ID
 func UniqueID() string {
-	t := time.Unix(1000000, 0)
+	t := time.Unix(time.Now().Unix(), 0)
 	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
 
 	return fmt.Sprint(ulid.MustNew(ulid.Timestamp(t), entropy))
@@ -66,7 +66,7 @@ func UploadTMP(c echo.Context) (err error) {
 	fName := strings.TrimSuffix(file.Name.String, filepath.Ext(file.Name.String))
 	fExt := filepath.Ext(file.Name.String)
 
-	tmpName := fName + "_" + UniqueID() + "." + fExt
+	tmpName := fName + "_" + UniqueID() + fExt
 
 	content, _ := b64.StdEncoding.DecodeString(file.Content.String)
 	err = ioutil.WriteFile(dataPathTMP+tmpName, content, 0644)
@@ -110,7 +110,7 @@ func UploadFINISH(c echo.Context) (err error) {
 		fName := strings.TrimSuffix(f.Name.String, filepath.Ext(f.Name.String))
 		fExt := filepath.Ext(f.Name.String)
 
-		dbName := fName + "_" + UniqueID() + "." + fExt
+		dbName := fName + "_" + UniqueID() + fExt
 
 		err := os.Rename(dataPathTMP+f.TmpName.String, finPath+dbName)
 
@@ -130,6 +130,37 @@ func UploadFINISH(c echo.Context) (err error) {
 	return c.JSON(http.StatusOK, result)
 }
 
+// DeleteTMP - Delete temporary file
+func DeleteTMP(c echo.Context) (err error) {
+	var file FileData
+
+	dataROOT, err := os.Getwd()
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"msg1": err.Error()})
+	}
+	dataPathTMP := dataROOT + "/../" + pathTMP + "/"
+
+	if err = c.Bind(&file); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"msg2": err.Error()})
+	}
+
+	tmpName := file.TmpName.String
+
+	err = os.Remove(dataPathTMP + tmpName)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"msg3": err.Error()})
+	}
+
+	result := map[string]string{
+		"result":   "done",
+		"name":     file.Name.String,
+		"type":     file.Type.String,
+		"tmp_name": tmpName,
+	}
+
+	return c.JSON(http.StatusOK, result)
+}
+
 func main() {
 	e := echo.New()
 
@@ -144,6 +175,7 @@ func main() {
 	e.Static("/", "public")
 	e.POST("/upload-tmp", UploadTMP)
 	e.POST("/upload-finish", UploadFINISH)
+	e.DELETE("/upload-tmp", DeleteTMP)
 
 	// e.Logger.Fatal(e.Start(":1323"))
 	e.Logger.Fatal(e.Start("localhost:1323"))

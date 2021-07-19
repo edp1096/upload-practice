@@ -25,11 +25,11 @@
     const uploadTmpPath = "data_tmp"
 
     // php
-    // const uriTMP = "upload-stream.php"
+    const uriTMP = "upload-stream.php"
     // const uriFINISH = "move.php"
 
     // go
-    const uriTMP = "http://localhost:1323/upload-tmp"
+    // const uriTMP = "http://localhost:1323/upload-tmp"
     const uriFINISH = "http://localhost:1323/upload-finish"
 
     const headerJSON = {
@@ -196,7 +196,7 @@
 
             // document.getElementById("progress").innerHTML = pct + "%"
             document.getElementById("progress-bar" + ord).value = pct
-            document.getElementById("progress-bar" + ord).setAttribute("data-label", pct)
+            document.getElementById("progress-bar" + ord).setAttribute("data-label", pct + "%")
         })
 
         const obj = JSON.parse(response)
@@ -205,7 +205,19 @@
         showRemoteObject(obj, ord)
     }
 
-    function deleteEntry(ord) {
+    async function deleteEntry(ord) {
+        const obj = JSON.parse(formData.get("file" + ord))
+        const data = {
+            name: obj.name,
+            tmp_name: obj.tmp_name,
+            type: obj.type
+        }
+        const response = await fetch(uriTMP, {
+            method: "DELETE",
+            headers: headerJSON,
+            body: JSON.stringify(data)
+        })
+
         formData.delete("file" + ord)
 
         const cavity = document.getElementById("file-cavity" + ord)
@@ -213,7 +225,7 @@
     }
 
     async function uploadFINISH() {
-        let data = new Array();
+        let data = new Array()
         formData.forEach(function (value, key) {
             data.push(JSON.parse(value))
         })
@@ -239,7 +251,6 @@
             }
         })
     }
-
 </script>
 <style>
     #drop-area {

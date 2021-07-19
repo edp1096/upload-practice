@@ -13,12 +13,18 @@ if (!file_exists(getcwd() . "/" . $dataTmpPath)) {
     mkdir(getcwd() . "/" . $dataTmpPath, 0644);
 }
 
-if ($fileData["name"] != null and $fileData["type"] != null) {
-    $fname = pathinfo($fileData["name"], PATHINFO_FILENAME);
-    $fext = strtolower(pathinfo($fileData["name"], PATHINFO_EXTENSION));
-    $filenameTMP = $fname . '_' . uniqid() . '.' . $fext;
-
-    file_put_contents(getcwd() . "/" . $dataTmpPath . "/" . $filenameTMP, $fileContent);
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    if ($fileData["tmp_name"] != null and $fileData["type"] != null) {
+        unlink(getcwd() . "/" . $dataTmpPath . "/" . $fileData["tmp_name"]);
+    }
+} else {
+    if ($fileData["name"] != null and $fileData["type"] != null) {
+        $fname = pathinfo($fileData["name"], PATHINFO_FILENAME);
+        $fext = strtolower(pathinfo($fileData["name"], PATHINFO_EXTENSION));
+        $filenameTMP = $fname . '_' . uniqid() . '.' . $fext;
+    
+        file_put_contents(getcwd() . "/" . $dataTmpPath . "/" . $filenameTMP, $fileContent);
+    }
 }
 
 $result = array(
