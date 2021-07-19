@@ -6,6 +6,7 @@
 * 폼업로드, 스트림 업로드
 * 임시파일, 이동
 
+* html: `index.html`, `stream.html`
 * golang: `uploader`, `uploader-stream` 폴더
 * php: `upload.php`, `upload-stream.php`
 * 예쁜 style: 그런거 없다

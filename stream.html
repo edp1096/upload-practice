@@ -197,12 +197,29 @@
             // document.getElementById("progress").innerHTML = pct + "%"
             document.getElementById("progress-bar" + ord).value = pct
             document.getElementById("progress-bar" + ord).setAttribute("data-label", pct + "%")
-        })
+        }).catch((error) => {})
 
-        const obj = JSON.parse(response)
+        let success = false
+        if (response != undefined) {
+            success = true
 
-        formData.append("file" + ord, response)
-        showRemoteObject(obj, ord)
+            responseJSON = JSON.parse(response)
+            if (responseJSON.msg == "You cannot upload") {
+                success = false
+            }
+        }
+
+        if (success) {
+            const obj = JSON.parse(response)
+
+            formData.append("file" + ord, response)
+            showRemoteObject(obj, ord)
+        } else {
+            swal.fire("Upload failed", "", "error")
+            formData.delete("file" + ord)
+            const cavity = document.getElementById("file-cavity" + ord)
+            cavity.remove()
+        }
     }
 
     async function deleteEntry(ord) {

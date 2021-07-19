@@ -46,6 +46,9 @@ func UniqueID() string {
 func UploadTMP(c echo.Context) (err error) {
 	var file FileData
 
+	// 에러 확인
+	// return c.JSON(http.StatusBadRequest, map[string]string{"msg": "You cannot upload"})
+
 	dataROOT, err := os.Getwd()
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"msg": err.Error()})
