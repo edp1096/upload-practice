@@ -11,4 +11,12 @@
 * php: `upload.php`, `upload-stream.php`
 * 예쁜 style: 그런거 없다
 
+## HTML 띄우기
+* caddy.exe 실행
+```sh
+$ ./caddy.exe file-server --listen :80
+```
+* 브라우저에서 `localhost/stream.html` 열기
+
+
 라이선스: 퍼블릭도메인
