@@ -14,10 +14,10 @@
     <h1>업로드 연습 - 스트림</h1>
     <input type="file" name="input-file" multiple onchange="inputHandler(this)" />
     <div id="drop-area" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
-        <p>Drag one or more files to this Drop Zone</p>
+        <p>여기에 파일 긁어서 떨구기</p>
     </div>
-    <button onclick="uploadFINISH()">Complete upload</button>
-    <pre id="msg"></pre>
+    <button onclick="uploadFINISH()">업로드 마무리</button>
+    <div id="msg"></div>
 
 </body>
 <script>
@@ -109,6 +109,12 @@
 
                 break
             default:
+                const fimg = document.createElement("img")
+                fimg.setAttribute("id", "img" + ord)
+                fimg.setAttribute("src", "file.svg")
+                fimg.setAttribute("width", "100")
+                cavity.appendChild(fimg)
+
                 const fname = document.createElement("span")
                 fname.setAttribute("id", "filename" + ord)
                 fname.innerText = obj.name
@@ -133,8 +139,9 @@
         const files = new Array()
 
         for (var i = 0; i < ev.dataTransfer.files.length; i++) {
-            const cavity = document.createElement("div" + (orderCount + i))
+            const cavity = document.createElement("div")
             cavity.setAttribute("id", "file-cavity" + (orderCount + i))
+            cavity.setAttribute("class", "file-cavity")
 
             const progress = document.createElement("progress")
             progress.setAttribute("id", "progress-bar" + (orderCount + i))
@@ -161,8 +168,9 @@
         }
 
         for (var i = 0; i < input.files.length; i++) {
-            const cavity = document.createElement("div" + (orderCount + i))
+            const cavity = document.createElement("div")
             cavity.setAttribute("id", "file-cavity" + (orderCount + i))
+            cavity.setAttribute("class", "file-cavity")
 
             const progress = document.createElement("progress")
             progress.setAttribute("id", "progress-bar" + (orderCount + i))
@@ -197,7 +205,7 @@
             // document.getElementById("progress").innerHTML = pct + "%"
             document.getElementById("progress-bar" + ord).value = pct
             document.getElementById("progress-bar" + ord).setAttribute("data-label", pct + "%")
-        }).catch((error) => {})
+        }).catch((error) => { })
 
         let success = false
         if (response != undefined) {
@@ -276,11 +284,21 @@
         height: 100px;
     }
 
+    #msg {
+        display: flex;
+    }
+
     /*
     Progress bar
     https: //stackoverflow.com/questions/41429906/how-to-display-data-label-inside-html5-progress-bar-cross-browser
     https: //stackoverflow.com/questions/65612948/change-the-color-of-webkit-progress-value-from-javascript
     */
+
+    .file-cavity {
+        position: relative;
+        width: 170px;
+        height: 120px;
+    }
 
     progress::-webkit-progress-value {
         background-color: cadetblue;
@@ -290,7 +308,11 @@
         text-align: center;
         border: none;
         color: white;
+        opacity: .5;
         position: relative;
+
+        top: 60px;
+        z-index: 100;
     }
 
     progress:before {
@@ -299,6 +321,20 @@
         position: absolute;
         left: 0;
         right: 0;
+    }
+
+    .file-cavity>* {
+        position: absolute;
+        left: 0px;
+    }
+
+    .file-cavity>span {
+        font-size: 0.8em;
+        top: 90px;
+    }
+
+    .file-cavity>button {
+        left: 130px;
     }
 </style>
 
