@@ -16,7 +16,8 @@ if (!file_exists($path)) {
 }
 
 foreach ($moveData as $k => $v) {
-    $f = json_decode($v, true);
+    // $f = json_decode($v, true);
+    $f = $v;
     $fname = pathinfo($f["name"], PATHINFO_FILENAME);
     $fext = strtolower(pathinfo($f["name"], PATHINFO_EXTENSION));
     // $filename = $fname . '_' . uniqid() . '.' . $fext;
@@ -36,4 +37,3 @@ $result = array(
 );
 
 echo json_encode($result, JSON_UNESCAPED_UNICODE);
-
