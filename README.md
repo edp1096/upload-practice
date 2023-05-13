@@ -20,3 +20,7 @@ $ ./caddy.exe file-server --listen :80
 
 
 라이선스: 퍼블릭도메인
+
+
+## 참고
+* https://as-you-say.tistory.com/380
